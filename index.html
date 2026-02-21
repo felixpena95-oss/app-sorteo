@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Ruleta del Destino</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    text-align:center;
+    background:#111;
+    color:white;
+}
+
+h1{
+    margin-top:20px;
+}
+
+#fecha{
+    margin-bottom:20px;
+    font-size:18px;
+    color:#ccc;
+}
+
+canvas{
+    margin-top:20px;
+    background:white;
+    border-radius:50%;
+}
+
+textarea{
+    width:300px;
+    height:80px;
+    margin-top:15px;
+}
+
+button{
+    padding:12px 20px;
+    font-size:16px;
+    margin-top:15px;
+    cursor:pointer;
+}
+
+#resultado{
+    font-size:22px;
+    margin-top:20px;
+    font-weight:bold;
+    color:#00ffcc;
+}
+</style>
+</head>
+
+<body>
+
+<h1>¿A quién vamos a mandar a pisar hoy? 😈</h1>
+<div id="fecha"></div>
+
+<canvas id="ruleta" width="400" height="400"></canvas>
+
+<br>
+
+<textarea id="opciones" placeholder="Escribe opciones separadas por coma
+Ej: Juan, Pedro, Ana"></textarea>
+
+<br>
+<button onclick="girar()">GIRAR RULETA</button>
+
+<div id="resultado"></div>
+
+<script>
+const canvas = document.getElementById("ruleta");
+const ctx = canvas.getContext("2d");
+
+let opciones = ["Nadie"];
+let anguloActual = 0;
+let girando = false;
+
+function mostrarFecha(){
+    const hoy = new Date();
+    const texto = hoy.toLocaleDateString("es-ES", {
+        weekday:"long",
+        year:"numeric",
+        month:"long",
+        day:"numeric"
+    });
+    document.getElementById("fecha").textContent = texto;
+}
+
+mostrarFecha();
+
+function leerOpciones(){
+    const texto = document.getElementById("opciones").value;
+    opciones = texto.split(",").map(o=>o.trim()).filter(o=>o);
+    if(opciones.length===0) opciones=["Nadie"];
+}
+
+function dibujarRuleta(){
+    const centroX = canvas.width/2;
+    const centroY = canvas.height/2;
+    const radio = 180;
+    const anguloPorSeccion = (2*Math.PI)/opciones.length;
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    opciones.forEach((op,i)=>{
+        const inicio = anguloActual + i*anguloPorSeccion;
+        const fin = inicio + anguloPorSeccion;
+
+        ctx.beginPath();
+        ctx.moveTo(centroX,centroY);
+        ctx.arc(centroX,centroY,radio,inicio,fin);
+        ctx.fillStyle = `hsl(${i*360/opciones.length},70%,50%)`;
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(centroX,centroY);
+        ctx.rotate(inicio + anguloPorSeccion/2);
+        ctx.fillStyle="white";
+        ctx.font="14px Arial";
+        ctx.fillText(op,radio*0.6,5);
+        ctx.restore();
+    });
+
+    // Flecha
+    ctx.fillStyle="red";
+    ctx.beginPath();
+    ctx.moveTo(200,10);
+    ctx.lineTo(190,30);
+    ctx.lineTo(210,30);
+    ctx.fill();
+}
+
+dibujarRuleta();
+
+function girar(){
+    if(girando) return;
+
+    leerOpciones();
+    girando=true;
+
+    let velocidad = Math.random()*0.3 + 0.4;
+
+    function animar(){
+        anguloActual += velocidad;
+        velocidad *= 0.98;
+
+        dibujarRuleta();
+
+        if(velocidad>0.002){
+            requestAnimationFrame(animar);
+        }else{
+            girando=false;
+            mostrarResultado();
+        }
+    }
+
+    animar();
+}
+
+function mostrarResultado(){
+    const anguloPorSeccion = (2*Math.PI)/opciones.length;
+    let anguloNormalizado = anguloActual%(2*Math.PI);
+
+    let indice = opciones.length - Math.floor(anguloNormalizado/anguloPorSeccion) -1;
+    if(indice<0) indice+=opciones.length;
+
+    document.getElementById("resultado").textContent =
+        "Hoy le toca a: " + opciones[indice] + " 😬";
+}
+</script>
+
+</body>
+</html>
