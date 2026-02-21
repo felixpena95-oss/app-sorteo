@@ -5,48 +5,103 @@
 <title>Ruleta del Destino</title>
 
 <style>
+
+/* ===== FONDO ANIMADO ===== */
 body{
-    font-family: Arial, sans-serif;
+    margin:0;
+    font-family:Arial, sans-serif;
     text-align:center;
-    background:#111;
     color:white;
+    overflow-x:hidden;
+    background:linear-gradient(270deg,#0f2027,#203a43,#2c5364);
+    background-size:600% 600%;
+    animation:fondo 12s ease infinite;
+}
+
+@keyframes fondo{
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
 }
 
 h1{
     margin-top:20px;
+    text-shadow:0 0 15px cyan;
 }
 
 #fecha{
-    margin-bottom:20px;
-    font-size:18px;
-    color:#ccc;
+    margin-bottom:10px;
+    opacity:0.8;
 }
 
+/* ===== RULETA ===== */
 canvas{
-    margin-top:20px;
-    background:white;
+    margin-top:15px;
     border-radius:50%;
+    box-shadow:
+        0 0 30px rgba(0,255,255,0.5),
+        inset 0 0 40px rgba(0,0,0,0.8);
 }
 
+/* ===== INPUT ===== */
 textarea{
     width:300px;
     height:80px;
     margin-top:15px;
+    border-radius:10px;
+    border:none;
+    padding:10px;
 }
 
+/* ===== BOTÓN PRO ===== */
 button{
-    padding:12px 20px;
-    font-size:16px;
     margin-top:15px;
+    padding:14px 28px;
+    font-size:16px;
+    border:none;
+    border-radius:30px;
     cursor:pointer;
+    color:white;
+    background:linear-gradient(45deg,#00f5ff,#00ff88);
+    box-shadow:0 0 20px #00ffee;
+    transition:0.3s;
 }
 
+button:hover{
+    transform:scale(1.1);
+    box-shadow:0 0 40px #00ffee;
+}
+
+/* ===== RESULTADO ===== */
 #resultado{
-    font-size:22px;
+    font-size:26px;
     margin-top:20px;
     font-weight:bold;
-    color:#00ffcc;
+    opacity:0;
+    transform:scale(0.5);
+    transition:0.5s;
 }
+
+#resultado.mostrar{
+    opacity:1;
+    transform:scale(1.2);
+}
+
+/* ===== CONFETTI ===== */
+.confetti{
+    position:fixed;
+    width:8px;
+    height:8px;
+    top:-10px;
+    animation:caer linear forwards;
+}
+
+@keyframes caer{
+    to{
+        transform:translateY(110vh) rotate(720deg);
+    }
+}
+
 </style>
 </head>
 
@@ -59,8 +114,7 @@ button{
 
 <br>
 
-<textarea id="opciones" placeholder="Escribe opciones separadas por coma
-Ej: Juan, Pedro, Ana"></textarea>
+<textarea id="opciones" placeholder="Juan, Pedro, Ana"></textarea>
 
 <br>
 <button onclick="girar()">GIRAR RULETA</button>
@@ -68,83 +122,91 @@ Ej: Juan, Pedro, Ana"></textarea>
 <div id="resultado"></div>
 
 <script>
-const canvas = document.getElementById("ruleta");
-const ctx = canvas.getContext("2d");
 
-let opciones = ["Nadie"];
-let anguloActual = 0;
-let girando = false;
+/* ===== FECHA ===== */
+document.getElementById("fecha").textContent =
+new Date().toLocaleDateString("es-ES",{
+weekday:"long",year:"numeric",month:"long",day:"numeric"
+});
 
-function mostrarFecha(){
-    const hoy = new Date();
-    const texto = hoy.toLocaleDateString("es-ES", {
-        weekday:"long",
-        year:"numeric",
-        month:"long",
-        day:"numeric"
-    });
-    document.getElementById("fecha").textContent = texto;
+/* ===== CANVAS ===== */
+const canvas=document.getElementById("ruleta");
+const ctx=canvas.getContext("2d");
+
+let opciones=["Nadie"];
+let anguloActual=0;
+let girando=false;
+
+/* ===== SONIDO DE GIRO ===== */
+function sonidoTick(){
+    const ctxAudio=new (window.AudioContext||window.webkitAudioContext)();
+    const osc=ctxAudio.createOscillator();
+    osc.type="square";
+    osc.frequency.value=200;
+    osc.connect(ctxAudio.destination);
+    osc.start();
+    osc.stop(ctxAudio.currentTime+0.03);
 }
 
-mostrarFecha();
-
+/* ===== LEER OPCIONES ===== */
 function leerOpciones(){
-    const texto = document.getElementById("opciones").value;
-    opciones = texto.split(",").map(o=>o.trim()).filter(o=>o);
+    const txt=document.getElementById("opciones").value;
+    opciones=txt.split(",").map(o=>o.trim()).filter(o=>o);
     if(opciones.length===0) opciones=["Nadie"];
 }
 
-function dibujarRuleta(){
-    const centroX = canvas.width/2;
-    const centroY = canvas.height/2;
-    const radio = 180;
-    const anguloPorSeccion = (2*Math.PI)/opciones.length;
+/* ===== DIBUJAR RULETA ===== */
+function dibujar(){
+    const cx=200, cy=200, r=180;
+    const ang=2*Math.PI/opciones.length;
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0,0,400,400);
 
     opciones.forEach((op,i)=>{
-        const inicio = anguloActual + i*anguloPorSeccion;
-        const fin = inicio + anguloPorSeccion;
+        const inicio=anguloActual+i*ang;
+        const fin=inicio+ang;
 
         ctx.beginPath();
-        ctx.moveTo(centroX,centroY);
-        ctx.arc(centroX,centroY,radio,inicio,fin);
-        ctx.fillStyle = `hsl(${i*360/opciones.length},70%,50%)`;
+        ctx.moveTo(cx,cy);
+        ctx.arc(cx,cy,r,inicio,fin);
+        ctx.fillStyle=`hsl(${i*360/opciones.length},80%,55%)`;
         ctx.fill();
 
         ctx.save();
-        ctx.translate(centroX,centroY);
-        ctx.rotate(inicio + anguloPorSeccion/2);
+        ctx.translate(cx,cy);
+        ctx.rotate(inicio+ang/2);
         ctx.fillStyle="white";
-        ctx.font="14px Arial";
-        ctx.fillText(op,radio*0.6,5);
+        ctx.font="bold 14px Arial";
+        ctx.fillText(op,r*0.6,5);
         ctx.restore();
     });
 
-    // Flecha
+    /* puntero */
     ctx.fillStyle="red";
     ctx.beginPath();
-    ctx.moveTo(200,10);
+    ctx.moveTo(200,5);
     ctx.lineTo(190,30);
     ctx.lineTo(210,30);
     ctx.fill();
 }
+dibujar();
 
-dibujarRuleta();
-
+/* ===== GIRAR ===== */
 function girar(){
     if(girando) return;
 
     leerOpciones();
     girando=true;
 
-    let velocidad = Math.random()*0.3 + 0.4;
+    let velocidad=Math.random()*0.35+0.45;
 
     function animar(){
-        anguloActual += velocidad;
-        velocidad *= 0.98;
+        anguloActual+=velocidad;
+        velocidad*=0.985;
 
-        dibujarRuleta();
+        if(Math.random()<0.4) sonidoTick();
+
+        dibujar();
 
         if(velocidad>0.002){
             requestAnimationFrame(animar);
@@ -153,21 +215,36 @@ function girar(){
             mostrarResultado();
         }
     }
-
     animar();
 }
 
+/* ===== RESULTADO ===== */
 function mostrarResultado(){
-    const anguloPorSeccion = (2*Math.PI)/opciones.length;
-    let anguloNormalizado = anguloActual%(2*Math.PI);
+    const ang=2*Math.PI/opciones.length;
+    let normal=anguloActual%(2*Math.PI);
+    let i=opciones.length-Math.floor(normal/ang)-1;
+    if(i<0)i+=opciones.length;
 
-    let indice = opciones.length - Math.floor(anguloNormalizado/anguloPorSeccion) -1;
-    if(indice<0) indice+=opciones.length;
+    const res=document.getElementById("resultado");
+    res.textContent="HOY LE TOCA A: "+opciones[i]+" 💀";
+    res.classList.add("mostrar");
 
-    document.getElementById("resultado").textContent =
-        "Hoy le toca a: " + opciones[indice] + " 😬";
+    lanzarConfetti();
 }
-</script>
 
+/* ===== CONFETTI ===== */
+function lanzarConfetti(){
+    for(let i=0;i<80;i++){
+        const c=document.createElement("div");
+        c.className="confetti";
+        c.style.left=Math.random()*100+"vw";
+        c.style.background=`hsl(${Math.random()*360},100%,50%)`;
+        c.style.animationDuration=2+Math.random()*2+"s";
+        document.body.appendChild(c);
+        setTimeout(()=>c.remove(),4000);
+    }
+}
+
+</script>
 </body>
 </html>
