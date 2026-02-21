@@ -12,16 +12,23 @@ background:#02030a;
 color:white;
 font-family:system-ui;
 overflow:hidden;
-display:flex;
-flex-direction:column;
-align-items:center;
 }
 
+/* CANVAS 3D */
+canvas{
+position:fixed;
+top:0;
+left:0;
+z-index:0;
+}
+
+/* UI ENCIMA */
 .ui{
 position:fixed;
 top:20px;
 left:50%;
 transform:translateX(-50%);
+z-index:10;
 background:rgba(255,255,255,.05);
 backdrop-filter:blur(20px);
 padding:20px;
@@ -54,8 +61,11 @@ box-shadow:0 0 25px #00ffee;
 .result{
 position:fixed;
 bottom:40px;
+left:50%;
+transform:translateX(-50%);
 font-size:28px;
 text-shadow:0 0 20px cyan;
+z-index:10;
 }
 </style>
 </head>
@@ -70,17 +80,12 @@ text-shadow:0 0 20px cyan;
 
 <div class="result" id="result"></div>
 
-<!-- THREE JS -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160/build/three.min.js"></script>
-
-<!-- GSAP easing PRO -->
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12/dist/gsap.min.js"></script>
 
 <script>
 
-/* =========================
-   ESCENA 3D
-========================= */
+/* ========= ESCENA ========= */
 const scene=new THREE.Scene();
 scene.background=new THREE.Color("#02030a");
 
@@ -92,72 +97,48 @@ renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
-/* =========================
-   LUCES CASINO
-========================= */
-const ambient=new THREE.AmbientLight(0xffffff,.4);
-scene.add(ambient);
+/* ========= LUCES ========= */
+scene.add(new THREE.AmbientLight(0xffffff,.5));
 
 const neon=new THREE.PointLight(0x00ffff,3,20);
 neon.position.set(0,4,4);
 scene.add(neon);
 
-const rim=new THREE.PointLight(0xff00ff,2,20);
-rim.position.set(0,-3,-4);
-scene.add(rim);
-
-/* =========================
-   DATOS
-========================= */
+/* ========= RULETA ========= */
 let options=["Nadie"];
-const wheelGroup=new THREE.Group();
-scene.add(wheelGroup);
+const wheel=new THREE.Group();
+scene.add(wheel);
 
-/* =========================
-   CREAR RULETA 3D
-========================= */
 function buildWheel(){
-
-wheelGroup.clear();
+wheel.clear();
 
 const segments=options.length;
-const angle=2*Math.PI/segments;
+const step=2*Math.PI/segments;
 
 for(let i=0;i<segments;i++){
-
-const geo=new THREE.CylinderGeometry(
-2,2,0.4,
-40,1,false,
-i*angle,angle
-);
-
+const geo=new THREE.CylinderGeometry(2,2,0.4,40,1,false,i*step,step);
 const color=new THREE.Color().setHSL(i/segments,.9,.55);
 
 const mat=new THREE.MeshStandardMaterial({
 color:color,
-metalness:.5,
-roughness:.3,
 emissive:color,
-emissiveIntensity:.25
+emissiveIntensity:.25,
+metalness:.4,
+roughness:.3
 });
 
-const mesh=new THREE.Mesh(geo,mat);
-wheelGroup.add(mesh);
+wheel.add(new THREE.Mesh(geo,mat));
 }
 
 /* centro */
-const hub=new THREE.Mesh(
+wheel.add(new THREE.Mesh(
 new THREE.CylinderGeometry(.4,.4,.6,40),
 new THREE.MeshStandardMaterial({color:0x111111,metalness:1})
-);
-wheelGroup.add(hub);
+));
 }
-
 buildWheel();
 
-/* =========================
-   PUNTERO 3D
-========================= */
+/* ========= PUNTERO ========= */
 const pointer=new THREE.Mesh(
 new THREE.ConeGeometry(.2,.6,20),
 new THREE.MeshStandardMaterial({color:0xff0000})
@@ -166,24 +147,7 @@ pointer.position.set(0,1.7,2);
 pointer.rotation.x=Math.PI;
 scene.add(pointer);
 
-/* =========================
-   SUELO REFLECTIVO
-========================= */
-const floor=new THREE.Mesh(
-new THREE.CircleGeometry(5,60),
-new THREE.MeshStandardMaterial({
-color:0x000000,
-metalness:.8,
-roughness:.2
-})
-);
-floor.rotation.x=-Math.PI/2;
-floor.position.y=-1.4;
-scene.add(floor);
-
-/* =========================
-   GIRAR PROFESIONAL
-========================= */
+/* ========= GIRAR ========= */
 function spin(){
 
 const txt=document.getElementById("names").value;
@@ -195,16 +159,14 @@ buildWheel();
 const winner=Math.floor(Math.random()*options.length);
 const seg=2*Math.PI/options.length;
 
-/* ángulo exacto */
 const target=
-wheelGroup.rotation.y+
+wheel.rotation.y+
 Math.PI*6+
 (Math.PI/2)-
 winner*seg-
 seg/2;
 
-/* animación cinematográfica */
-gsap.to(wheelGroup.rotation,{
+gsap.to(wheel.rotation,{
 y:target,
 duration:5,
 ease:"power4.out",
@@ -214,22 +176,15 @@ document.getElementById("result").textContent="🔥 "+options[winner];
 });
 }
 
-/* =========================
-   LOOP RENDER 60+ FPS
-========================= */
+/* ========= LOOP ========= */
 function animate(){
 requestAnimationFrame(animate);
-
-/* flotación sutil */
-wheelGroup.rotation.x=Math.sin(Date.now()*0.0005)*0.05;
-
+wheel.rotation.x=Math.sin(Date.now()*0.0005)*0.05;
 renderer.render(scene,camera);
 }
 animate();
 
-/* =========================
-   RESPONSIVE
-========================= */
+/* ========= RESPONSIVE ========= */
 addEventListener("resize",()=>{
 camera.aspect=innerWidth/innerHeight;
 camera.updateProjectionMatrix();
